@@ -28,12 +28,13 @@ function slugify(input: string) {
     .slice(0, 120);
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
+/** ✅ FIX: params is Promise, so await it */
+export async function generateMetadata(props: {
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const slug = decodeURIComponent(params.slug || "").trim();
+  const { slug: rawSlug } = await props.params;
+  const slug = decodeURIComponent(rawSlug || "").trim();
+
   const canonical = `${SITE_URL}/${encodeURIComponent(slug)}`;
 
   try {
@@ -64,8 +65,12 @@ export async function generateMetadata({
   }
 }
 
-export default async function Page({ params }: { params: { slug: string } }) {
-  const slug = decodeURIComponent(params.slug || "").trim();
+/** ✅ FIX: params is Promise, so await it */
+export default async function Page(props: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug: rawSlug } = await props.params;
+  const slug = decodeURIComponent(rawSlug || "").trim();
 
   // 1) Fetch the post on SERVER
   const res = await fetch(
@@ -93,8 +98,14 @@ export default async function Page({ params }: { params: { slug: string } }) {
     });
     if (recentRes.ok) {
       const json = await recentRes.json();
-      recent = Array.isArray(json) ? json : Array.isArray(json?.data) ? json.data : [];
-      recent = post?.id ? recent.filter((p) => p.id !== post.id).slice(0, 6) : recent.slice(0, 6);
+      recent = Array.isArray(json)
+        ? json
+        : Array.isArray(json?.data)
+        ? json.data
+        : [];
+      recent = post?.id
+        ? recent.filter((p) => p.id !== post.id).slice(0, 6)
+        : recent.slice(0, 6);
     }
   } catch {
     // ignore
@@ -150,7 +161,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
           </div>
         </aside>
 
-        {/* CENTER BLOG (SERVER HTML => Google sees it) */}
+        {/* CENTER BLOG */}
         <article
           className="order-1 lg:order-2 lg:col-span-8 xl:col-span-7 2xl:col-span-8 min-w-0"
           itemScope
@@ -166,7 +177,6 @@ export default async function Page({ params }: { params: { slug: string } }) {
                 {title}
               </h1>
 
-              {/* ✅ Edit button/modal will be injected by client component */}
               <BlogPostEditorClient
                 mode="title"
                 post={post}
@@ -197,7 +207,6 @@ export default async function Page({ params }: { params: { slug: string } }) {
 
             {/* Content */}
             <div className="relative group">
-              {/* ✅ Edit button/modal injected by client */}
               <BlogPostEditorClient
                 mode="content"
                 post={post}
@@ -227,7 +236,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
           </div>
         </article>
 
-        {/* RIGHT RECENT BLOGS (SERVER rendered) */}
+        {/* RIGHT RECENT BLOGS */}
         <aside className="order-3 lg:order-3 lg:col-span-2 xl:col-span-3 2xl:col-span-2 mt-2 lg:mt-0 min-w-0">
           <div className="lg:sticky lg:top-6 space-y-6">
             <div className="p-5 sm:p-6 border border-slate-100 rounded-xl bg-white shadow-sm">
@@ -239,7 +248,9 @@ export default async function Page({ params }: { params: { slug: string } }) {
                 <div className="space-y-4">
                   {recent.map((p) => {
                     const pSlug = slugify(String(p?.post_title || ""));
-                    const pDesc = stripHtml(String(p?.excerpt || p?.post_content || "")).slice(0, 90);
+                    const pDesc = stripHtml(
+                      String(p?.excerpt || p?.post_content || "")
+                    ).slice(0, 90);
                     const pDate = p?.createdAt ? new Date(p.createdAt) : null;
 
                     return (
