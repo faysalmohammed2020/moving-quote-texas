@@ -7,13 +7,13 @@ export const metadata: Metadata = {
   description:
     "Get fast, affordable moving quotes in Texas. Local and long-distance movers, packing, storage, and vehicle transport. Trusted crews, clear pricing, and smooth delivery.",
   alternates: {
-    canonical: "https://www.movingquotetexas.com/",
+    canonical: "https://movingquotetexas.com/",
   },
   openGraph: {
     title: "Moving Quote Texas | Local & Long Distance Moving Services",
     description:
       "Affordable moving quotes in Texas with packing, storage and long-distance options.",
-    url: "https://www.movingquotetexas.com/",
+    url: "https://movingquotetexas.com/",
     siteName: "Moving Quote Texas",
     type: "website",
   },
