@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* -------------------------
+   NextAuth models (mapped)
+--------------------------*/
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  role         Role     @default(USER)
+  passwordHash  String?   @map("password")
+  phone         String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  analyticsEvents AnalyticsEvent[]
+  blogPosts     BlogPost[] @relation("UserBlogPosts")
+  @@map("users")
+}
+
+
+
+model Account {
+  id                    String   @id @default(cuid())
+  provider              String   @map("providerId")
+  providerAccountId     String   @map("accountId")
+  type                  String   @default("oauth")
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  access_token          String?  @map("accessToken")
+  refresh_token         String?  @map("refreshToken")
+  id_token              String?  @map("idToken")
+  expires_at            Int?     @map("accessTokenExpiresAt")
+  refreshTokenExpiresAt DateTime?
+  token_type            String?
+  scope                 String?
+  session_state         String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  identifier String
+  token      String   @map("value") @unique
+  expires    DateTime @map("expiresAt")
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@unique([identifier, token])
+  @@map("verifications")
+}
+
+/* -------------------------
+   Your existing domain models
+--------------------------*/
+
+model lead {
+  id            Int       @id @default(autoincrement())
+  key           String
+  leadType      String    @map("lead_type")
+  leadSource    String    @map("lead_source")
+  referer       String
+  fromIp        String    @map("from_ip")
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  email         String
+  phone         String
+  phoneExt      String?   @map("phone_ext")
+  fromState     String    @map("from_state")
+  fromStateCode String    @map("from_state_code")
+  fromCity      String    @map("from_city")
+  fromZip       String    @map("from_zip")
+  toState       String    @map("to_state")
+  toStateCode   String    @map("to_state_code")
+  toCity        String    @map("to_city")
+  toZip         String    @map("to_zip")
+  moveDate      DateTime? @map("move_date")
+  moveSize      String    @map("move_size")
+  selfPackaging Boolean?  @map("self_packaging")
+  hasCar        Boolean?  @map("has_car")
+  carMake       String?   @map("car_make")
+  carModel      String?   @map("car_model")
+  carMakeYear   String?   @map("car_make_year")
+  createdAt     DateTime  @default(now())
+}
+
+model ApiLead {
+  id        Int      @id @default(autoincrement())
+  leadId    Int      @unique
+  callrail  Json
+  createdAt DateTime @default(now())
+}
+
+model BlogPost {
+  id                    Int       @id @default(autoincrement())
+  post_author String?  @map("post_author")
+  author      User?    @relation("UserBlogPosts", fields: [post_author], references: [id], onDelete: SetNull)
+  tags                  String?
+  name                  String?
+  category              String?
+  post_date             DateTime?
+  post_date_gmt         DateTime?
+  post_content          Json?
+  post_title            String
+  post_excerpt          String?
+  post_status           String?
+  comment_status        String?
+  ping_status           String?
+  post_password         String?
+  post_name             String?   @unique
+  to_ping               String?
+  pinged                String?
+  post_modified         DateTime?
+  post_modified_gmt     DateTime?
+  post_content_filtered String?
+  post_parent           Int?
+  guid                  String?
+  menu_order            Int?
+  post_type             String?
+  post_mime_type        String?
+  comment_count         Int?
+  createdAt             DateTime? @default(now())
+}
+
+enum AnalyticsEventName {
+  session_start
+  page_view
+  heartbeat
+}
+
+model AnalyticsEvent {
+  id        BigInt              @id @default(autoincrement())
+  ts        DateTime            @default(now())
+  event     AnalyticsEventName
+
+  // Identity
+  visitorId String              @map("visitor_id") // GA client_id like
+  sessionId String              @map("session_id") // GA session
+  userId    String?             @map("user_id")    // optional (logged in)
+  user      User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Page
+  path      String              @default("/") @map("path")
+  title     String?             @map("title")
+  referrer  String?             @map("referrer")
+
+  // UTM
+  utmSource   String?           @map("utm_source")
+  utmMedium   String?           @map("utm_medium")
+  utmCampaign String?           @map("utm_campaign")
+
+  // Device
+  deviceType String?            @map("device_type") // mobile/desktop/tablet
+  browser    String?            @map("browser")
+  os         String?            @map("os")
+  screen     String?            @map("screen")
+  lang       String?            @map("lang")
+
+  // Geo (optional)
+  country    String?            @map("country")
+  city       String?            @map("city")
+
+  // Engagement (heartbeat only)
+  activeSeconds Int             @default(0) @map("active_seconds")
+
+  ipHash String? @map("ip_hash")
+  dayKey String  @default("") @map("day_key")
+
+  @@index([dayKey])
+  @@index([ipHash, dayKey])
+  @@index([ts])
+  @@index([event, ts])
+  @@index([visitorId, ts])
+  @@index([sessionId, ts])
+  @@index([path, ts])
+  @@index([utmSource, ts])
+  @@index([deviceType, ts])
+  @@map("analytics_events")
+}
+model GeoIpCache {
+  id        Int      @id @default(autoincrement())
+  ip        String   @unique
+  country   String?
+  city      String?
+  region    String?
+  lat       Float?
+  lon       Float?
+  isp       String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([updatedAt])
+  @@map("geo_ip_cache")
+}
